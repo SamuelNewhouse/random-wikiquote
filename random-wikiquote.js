@@ -61,6 +61,8 @@ const WikiquoteApi = (() => {
    * Otherwise the entire text is returned.  Returns the titles that were used
    * in case there is a redirect.
    */
+
+
   wqa.getQuotesForSection = (pageId, sectionIndex) => {
     return new Promise((resolve, reject) => {
       $.ajax({
@@ -177,6 +179,11 @@ const WikiquoteApi = (() => {
       });
     });
   };
+
+  wqa.getRandomPage = () => {
+    const url = API_URL + "?action=query&list=random&rnnamespace=0&rnlimit=1";
+    return ajaxGet(url);
+  }
 
   /**
    * Gets a random quote from a random title in the main namespace
