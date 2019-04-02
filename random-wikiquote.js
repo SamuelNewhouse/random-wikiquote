@@ -6,11 +6,11 @@ const ajaxGet = (url) => {
       const status = xmlhttp.status;
 
       if (xmlhttp.readyState != 4 || status == 0)
-          return;
+        return;
       else if (status != 200) {
         reject("Invalid Response: " + status);
         return;
-        }
+      }
 
       try {
         const data = JSON.parse(xmlhttp.responseText);
@@ -29,7 +29,7 @@ const ajaxGet = (url) => {
 const WikiquoteApi = (() => {
   var wqa = {};
 
-  const API_URL = "https://en.wikiquote.org/w/api.php";
+  const API_URL = "https://en.wikiquote.org/w/api.php?origin=*&format=json";
   const retryLimit = 10;
 
   var minLength = 20;
@@ -151,37 +151,18 @@ const WikiquoteApi = (() => {
   /**
    * Gets a random page id from the main namespace.
    */
-  wqa.getRandomPage = () => {
-    return new Promise((resolve, reject) => {
-      $.ajax({
-        url: API_URL,
-        dataType: "jsonp",
-        data: {
-          format: "json",
-          action: "query",
-          redirects: "",
-          list: "random",
-          rnnamespace: 0,
-          rnlimit: 1
-        },
+  wqa.getRandomPage = async () => {
+    const url = API_URL + "&action=query&list=random&rnnamespace=0&rnlimit=1";
 
-        success: result => {
-          var id = result.query.random[0].id;
-
-          if (id)
-            resolve(id);
-          else
-            reject("No random page found");
-        },
-
-        error: () => reject("Error getting random page id")
-      });
-    });
-  };
-
-  wqa.getRandomPage = () => {
-    const url = API_URL + "?action=query&list=random&rnnamespace=0&rnlimit=1";
-    return ajaxGet(url);
+    try {
+      const data = await ajaxGet(url);
+      const id = data.query.random[0].id;
+      if (!id) throw new Error("Invalid random page id");
+      return id;
+    }
+    catch (error) {
+      throw new Error(error);
+    }
   }
 
   /**
@@ -241,3 +222,5 @@ const WikiquoteApi = (() => {
 
   return wqa;
 })();
+
+export default WikiquoteApi;
