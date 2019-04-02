@@ -115,38 +115,29 @@ const WikiquoteApi = (() => {
   * If no 1.x sections exists, returns section 1. Returns the titles that were used
   * in case there is a redirect.
   */
-  wqa.getSectionsForPage = (pageId) => {
-    return new Promise((resolve, reject) => {
-      $.ajax({
-        url: API_URL,
-        dataType: "jsonp",
-        data: {
-          format: "json",
-          action: "parse",
-          prop: "sections",
-          pageid: pageId
-        },
+  wqa.getSectionsForPage = async (pageId) => {
+    const url = API_URL + "&action=parse&prop=sections&pageid=" + pageId;
 
-        success: result => {
-          var sectionArray = [];
-          var sections = result.parse.sections;
-          for (var s in sections) {
-            var splitNum = sections[s].number.split('.');
-            if (splitNum.length > 1 && splitNum[0] === "1") {
-              sectionArray.push(sections[s].index);
-            }
-          }
-          // Use section 1 if there are no "1.x" sections
-          if (sectionArray.length === 0) {
-            sectionArray.push("1");
-          }
-          resolve({ pageId: pageId, titles: result.parse.title, sections: sectionArray });
-        },
-
-        error: () => reject("Error getting sections")
-      });
-    });
-  };
+    try {
+      const data = await ajaxGet(url);
+      const sectionArray = [];
+      const sections = data.parse.sections;
+      for (let s in sections) {
+        let splitNum = sections[s].number.split('.');
+        if (splitNum.length > 1 && splitNum[0] === "1") {
+          sectionArray.push(sections[s].index);
+        }
+      }
+      // Use section 1 if there are no "1.x" sections
+      if (sectionArray.length === 0) {
+        sectionArray.push("1");
+      }
+      return { pageId: pageId, titles: data.parse.title, sections: sectionArray };
+    }
+    catch (error) {
+      throw new Error(error);
+    }
+  }
 
   /**
    * Gets a random page id from the main namespace.
