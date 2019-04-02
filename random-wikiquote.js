@@ -3,26 +3,25 @@ const ajaxGet = (url) => {
     const xmlhttp = new XMLHttpRequest();
 
     xmlhttp.onreadystatechange = () => {
-      if (xmlhttp.readyState != 4) return;
+      const status = xmlhttp.status;
 
-      let data = null;
-      if (xmlhttp.status == 200) {
-        try {
-          data = JSON.parse(xmlhttp.responseText);
-        }
-        catch (err) {
-          reject(err);
+      if (xmlhttp.readyState != 4 || status == 0)
           return;
+      else if (status != 200) {
+        reject("Invalid Response: " + status);
+        return;
         }
 
+      try {
+        const data = JSON.parse(xmlhttp.responseText);
         resolve(data);
-        return;
       }
-
-      reject("Invalid Response: " + xmlhttp.status);
+      catch (error) {
+        reject(error);
+      }
     };
 
-    xmlhttp.open("GET", url);
+    xmlhttp.open("GET", url, true);
     xmlhttp.send();
   });
 }
