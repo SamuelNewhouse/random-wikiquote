@@ -53,15 +53,8 @@ const WikiquoteApi = (() => {
    * <ul>
    * <ul> next quote etc... </ul>
    *
-   * The quote may or may not contain sections inside <b /> tags.
-   *
-   * For quotes with bold sections, only the bold part is returned for brevity
-   * (usually the bold part is more well known).
-   * Otherwise the entire text is returned.  Returns the titles that were used
-   * in case there is a redirect.
+   * Returns the titles that were used in case there is a redirect.
    */
-
-
   wqa.getQuotesForSection = (pageId, sectionIndex) => {
     return new Promise((resolve, reject) => {
       $.ajax({
