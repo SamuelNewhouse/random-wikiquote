@@ -72,26 +72,27 @@ const WikiquoteApi = (() => {
           if (!result.parse) // Some pages have no valid sections.
             return reject("Page has no valid section");
 
-          const tagsToKeep = 'b, strong, i, em, mark, small, del, ins, sub, sup, a';
-          const removeHTML = html => $('<p>' + html + '</p>').text();
+          const childrenToKeep = ['B', 'STRONG', 'I', 'EM,', 'MARK', 'SMALL', 'DEL', 'INS', 'SUB', 'SUP', 'A'];
 
           var quotes = result.parse.text["*"];
-          var quoteArray = []
 
-          // Find top level <li> only
-          var $lis = $(quotes).find('li:not(li li)');
+          const parser = new DOMParser();
+          const html = parser.parseFromString(quotes, 'text/html');
+          const allQuotes = html.querySelectorAll('div > ul > li');
 
-          $lis.each(function () {
-            var li = $(this);
-            // Turn all children that aren't formatting tags or links into spaces.
-            // Spaces are used to avoid accidently removing necessary space from the quote.
-            // Formating tags and links must remain to avoid removing words in some cases.
-            li.children(':not(' + tagsToKeep + ')').replaceWith(' ');
+          let quoteArray = []
 
-            // Remove any remaining tags without removing text contained in them.
-            // This also removes any extra spaces caused by replacing tags with spaces.
-            quoteArray.push(removeHTML(li.html()));
-          });
+          for (let quote of allQuotes) {
+            // quote.children is a live collection. Convert to array.
+            let children = Array.from(quote.children);
+
+            // replace unwanted elements with a space.
+            for (let child of children)
+              if (!childrenToKeep.includes(child.tagName))
+                quote.replaceChild(document.createTextNode(" "), child);
+
+            quoteArray.push(quote.outerText);
+          }
 
           resolve({ titles: result.parse.title, quotes: quoteArray });
         },
@@ -100,6 +101,11 @@ const WikiquoteApi = (() => {
       });
     });
   };
+
+  // wqa.getQuotesForSection = async (pageId, sectionIndex) => {
+  //   const url = API_URL + "&action=parse&noimages&pageId=" + pageId + "&section=" +sectionIndex;
+
+  // }
 
   /**
   * Get the sections for a given page.
