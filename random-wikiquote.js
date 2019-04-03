@@ -30,7 +30,7 @@ const WikiquoteApi = (() => {
   var wqa = {};
 
   const API_URL = "https://en.wikiquote.org/w/api.php?origin=*&format=json";
-  const retryLimit = 10;
+  const retryLimit = 7;
 
   var minLength = 20;
   var maxLength = 300;
@@ -41,71 +41,45 @@ const WikiquoteApi = (() => {
   wqa.setNumericLimit = (percentage) => numericLimit = percentage;
 
   /**
-   * Get all quotes for a given section.  Most sections will be of the format:
-   * <h3> title </h3>
-   * <ul>
-   *   <li>
-   *     Quote text
-   *     <ul>
-   *       <li> additional info on the quote </li>
-   *     </ul>
-   *   </li>
-   * <ul>
-   * <ul> next quote etc... </ul>
+   * Get all quotes for a given section.
    *
    * Returns the titles that were used in case there is a redirect.
    */
-  wqa.getQuotesForSection = (pageId, sectionIndex) => {
-    return new Promise((resolve, reject) => {
-      $.ajax({
-        url: API_URL,
-        dataType: "jsonp",
-        data: {
-          format: "json",
-          action: "parse",
-          noimages: "",
-          pageid: pageId,
-          section: sectionIndex
-        },
+  wqa.getQuotesForSection = async (pageId, sectionIndex) => {
+    const url = API_URL + "&action=parse&noimages=&pageid=" + pageId + "&section=" + sectionIndex;
+    const childrenToKeep = ['A', 'B', 'I', 'STRONG', 'EM', 'MARK', 'ABBR', 'SMALL', 'DEL', 'INS', 'SUB', 'SUP', 'PRE', 'CODE', 'DFN', 'SAMP'];
 
-        success: result => {
-          if (!result.parse) // Some pages have no valid sections.
-            return reject("Page has no valid section");
+    try {
+      const data = await ajaxGet(url);
+      if (!data.parse) // Some pages have no valid sections.
+        throw new Error("Page has no valid section");
 
-          const childrenToKeep = ['B', 'STRONG', 'I', 'EM,', 'MARK', 'SMALL', 'DEL', 'INS', 'SUB', 'SUP', 'A'];
+      var quotes = data.parse.text["*"];
 
-          var quotes = result.parse.text["*"];
+      const parser = new DOMParser();
+      const html = parser.parseFromString(quotes, 'text/html');
+      const allQuotes = html.querySelectorAll('div > ul > li');
 
-          const parser = new DOMParser();
-          const html = parser.parseFromString(quotes, 'text/html');
-          const allQuotes = html.querySelectorAll('div > ul > li');
+      let parsedQuotes = []
 
-          let quoteArray = []
+      for (let quote of allQuotes) {
+        // Convert from live collection to array.
+        let children = Array.from(quote.children);
 
-          for (let quote of allQuotes) {
-            // quote.children is a live collection. Convert to array.
-            let children = Array.from(quote.children);
+        // replace unwanted elements with spaces.
+        for (let child of children)
+          if (!childrenToKeep.includes(child.tagName))
+            quote.replaceChild(document.createTextNode(" "), child);
 
-            // replace unwanted elements with a space.
-            for (let child of children)
-              if (!childrenToKeep.includes(child.tagName))
-                quote.replaceChild(document.createTextNode(" "), child);
+        parsedQuotes.push(quote.outerText);
+      }
 
-            quoteArray.push(quote.outerText);
-          }
-
-          resolve({ titles: result.parse.title, quotes: quoteArray });
-        },
-
-        error: () => reject("Error getting quotes")
-      });
-    });
-  };
-
-  // wqa.getQuotesForSection = async (pageId, sectionIndex) => {
-  //   const url = API_URL + "&action=parse&noimages&pageId=" + pageId + "&section=" +sectionIndex;
-
-  // }
+      return { titles: data.parse.title, quotes: parsedQuotes };
+    }
+    catch (error) {
+      throw new Error(error);
+    }
+  }
 
   /**
   * Get the sections for a given page.
