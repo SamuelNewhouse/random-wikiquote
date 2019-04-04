@@ -41,17 +41,19 @@ const ajaxGet = (url) => {
 
 /**
  * Get all quotes for a given section.
- *
  * Returns the titles that were used in case there is a redirect.
  */
 const getQuotesForSection = async (pageId, sectionIndex) => {
   const url = BASE_URL + "&action=parse&noimages=&pageid=" + pageId + "&section=" + sectionIndex;
-  const childrenToKeep = ['A', 'B', 'I', 'STRONG', 'EM', 'MARK', 'ABBR', 'SMALL', 'DEL', 'INS', 'SUB', 'SUP', 'PRE', 'CODE', 'DFN', 'SAMP'];
+  const childrenToKeep = [
+    'A', 'B', 'I', 'STRONG', 'EM', 'MARK', 'ABBR', 'SMALL',
+    'DEL', 'INS', 'SUB', 'SUP', 'PRE', 'CODE', 'DFN', 'SAMP'
+  ];
 
   try {
     const data = await ajaxGet(url);
     if (!data.parse) // Some pages have no valid sections.
-      throw new Error("Page has no valid section");
+      return Promise.reject("Page has no valid section");
 
     var quotes = data.parse.text["*"];
 
@@ -62,30 +64,31 @@ const getQuotesForSection = async (pageId, sectionIndex) => {
     let parsedQuotes = []
 
     for (let quote of allQuotes) {
-      let children = Array.from(quote.children); // Convert from live collection to array.
+      // Must be array instead of live collection in case we remove multiple elements.
+      let children = Array.from(quote.children);
 
-      for (let child of children) // Replace unwanted elements with spaces.
+      // Replace unwanted elements with spaces to avoid running words together in some cases.
+      for (let child of children)
         if (!childrenToKeep.includes(child.tagName))
           quote.replaceChild(document.createTextNode(" "), child);
 
       parsedQuotes.push(quote.outerText);
     }
 
-    // TODO: Filter out bad quotes here to reduce API calls.
+    // TODO: Filter out bad quotes to reduce API calls.
 
     return { titles: data.parse.title, quotes: parsedQuotes };
   }
   catch (error) {
-    throw new Error(error);
+    return Promise.reject(error);
   }
 }
 
 /**
-* Get the sections for a given page.
-* This makes parsing for quotes more manageable.
+* Get the sections for a given page to make parsing easier.
 * Returns an array of all "1.x" sections as these usually contain the quotes.
-* If no 1.x sections exists, returns section 1. Returns the titles that were used
-* in case there is a redirect.
+* If no 1.x sections exists, returns section 1.
+* Returns the titles that were used in case there is a redirect.
 */
 const getSectionsForPage = async (pageId) => {
   const url = BASE_URL + "&action=parse&prop=sections&pageid=" + pageId;
@@ -94,20 +97,21 @@ const getSectionsForPage = async (pageId) => {
     const data = await ajaxGet(url);
     const sectionArray = [];
     const sections = data.parse.sections;
+
     for (let s in sections) {
       let splitNum = sections[s].number.split('.');
       if (splitNum.length > 1 && splitNum[0] === "1") {
         sectionArray.push(sections[s].index);
       }
     }
-    // Use section 1 if there are no "1.x" sections
+
     if (sectionArray.length === 0) {
-      sectionArray.push("1");
+      sectionArray.push("1"); // Use section 1 if there are no "1.x" sections
     }
     return { pageId: pageId, titles: data.parse.title, sections: sectionArray };
   }
   catch (error) {
-    throw new Error(error);
+    return Promise.reject(error);
   }
 }
 
@@ -120,11 +124,11 @@ const getRandomPage = async () => {
   try {
     const data = await ajaxGet(url);
     const id = data.query.random[0].id;
-    if (!id) throw new Error("Invalid random page id");
+    if (!id) return Promise.reject("Invalid random page id");
     return id;
   }
   catch (error) {
-    throw new Error(error);
+    return Promise.reject(error);
   }
 }
 
