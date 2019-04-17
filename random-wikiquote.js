@@ -171,19 +171,17 @@ const getRandomPage = async () => {
  */
 const getRandomQuote = () => {
   return new Promise((resolve, reject) => {
-    let numRetry = 0;
-
     const randomNum = max => Math.floor(Math.random() * max);
     const randomSection = sections => sections[randomNum(sections.length)];
     const randomQuote = quotes => quotes.quotes[randomNum(quotes.quotes.length)];
     const chooseQuote = quotes => ({ title: quotes.titles, quote: randomQuote(quotes) });
 
-    const checkRetry = (reason) => {
-      console.log(reason + " Retrying...");
-      numRetry++;
+    let numRetry = 0;
+    const checkRetry = reason => {
+      console.log(reason);
 
-      if (numRetry >= RETRY_LIMIT)
-        reject("Retry limit reached");
+      if (++numRetry > RETRY_LIMIT)
+        reject("Retry limit reached.");
       else
         mainSequence();
     }
