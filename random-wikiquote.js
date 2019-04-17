@@ -16,17 +16,18 @@ const RandomWikiquote = {};
 
 const BASE_URL = "https://en.wikiquote.org/w/api.php?origin=*&format=json";
 const RETRY_LIMIT = 5;
+const ELEMENTS_TO_KEEP = [ // These elements might contain the quote or parts of it.
   'A', 'B', 'I', 'STRONG', 'EM', 'MARK', 'ABBR', 'SMALL',
   'DEL', 'INS', 'SUB', 'SUP', 'PRE', 'CODE', 'DFN', 'SAMP'
 ];
 
 let minLength = 10;
 let maxLength = 300;
-let numericLimit = 0.1; // Some 'quotes' are just dates and times. Those are filtered out.
+let numericLimit = 0.1; // Some "quotes" are just dates and times. Those are filtered out.
 
-RandomWikiquote.setMinLength = (min) => minLength = min;
-RandomWikiquote.setMaxLength = (max) => maxLength = max;
-RandomWikiquote.setNumericLimit = (percentage) => numericLimit = percentage;
+RandomWikiquote.setMinLength = min => minLength = min;
+RandomWikiquote.setMaxLength = max => maxLength = max;
+RandomWikiquote.setNumericLimit = percentage => numericLimit = percentage;
 
 const isQuoteValid = quote => {
   if (!quote)
@@ -40,7 +41,7 @@ const isQuoteValid = quote => {
   return true;
 };
 
-const ajaxGet = (url) => {
+const ajaxGet = url => {
   return new Promise((resolve, reject) => {
     const xmlhttp = new XMLHttpRequest();
 
@@ -69,7 +70,57 @@ const ajaxGet = (url) => {
 }
 
 /**
- * Gets all quotes for a given section.
+ * Gets a random page id from the main namespace.
+ */
+const getRandomPage = async () => {
+  const url = BASE_URL + "&action=query&list=random&rnnamespace=0&rnlimit=1";
+  let data = null;
+
+  try {
+    data = await ajaxGet(url);
+  }
+  catch (error) {
+    return Promise.reject(error);
+  }
+
+  const id = data.query.random[0].id;
+  if (!id)
+    return Promise.reject("Invalid random page id.");
+  return id;
+}
+
+/**
+* Get the sections for a given page to make parsing easier.
+* Returns the title in case there is a redirect.
+*/
+const getSectionsForPage = async (pageId) => {
+  const url = BASE_URL + "&action=parse&prop=sections&pageid=" + pageId;
+  let data = null;
+
+  try {
+    data = await ajaxGet(url);
+  }
+  catch (error) {
+    return Promise.reject(error);
+  }
+
+  const sectionArray = [];
+  const sections = data.parse.sections;
+
+  for (let s in sections) {
+    let splitNum = sections[s].number.split('.');
+    if (splitNum.length > 1 && splitNum[0] === "1")
+      sectionArray.push(sections[s].index);
+  }
+
+  if (sectionArray.length === 0)
+    sectionArray.push("1"); // Use section 1 if there are no "1.x" sections
+
+  return { pageId: pageId, titles: data.parse.title, sections: sectionArray };
+}
+
+/**
+ * Gets all valid quotes for a given section.
  * Returns the title in case there is a redirect.
  */
 const getQuotesForSection = async (pageId, sectionIndex) => {
@@ -83,10 +134,9 @@ const getQuotesForSection = async (pageId, sectionIndex) => {
     return Promise.reject(error);
   }
 
-  if (!data.parse) // Some pages have no valid sections.
-    return Promise.reject("Section is not valid.");
+  if (!data.parse) return Promise.reject("Section is not valid.");
 
-  const parsedQuotes = []
+  const validQuotes = []
   const quotes = data.parse.text["*"];
   const parser = new DOMParser();
   const html = parser.parseFromString(quotes, 'text/html');
@@ -107,65 +157,13 @@ const getQuotesForSection = async (pageId, sectionIndex) => {
     plainQuote = plainQuote.trim();
 
     if (isQuoteValid(plainQuote))
-      parsedQuotes.push(plainQuote);
+      validQuotes.push(plainQuote);
   }
 
-  if (parsedQuotes.length == 0)
+  if (validQuotes.length === 0)
     return Promise.reject("Section has no valid quote.");
 
-  return { titles: data.parse.title, quotes: parsedQuotes };
-}
-
-/**
-* Get the sections for a given page to make parsing easier.
-* Returns an array of all "1.x" sections as these usually contain the quotes.
-* If no 1.x sections exists, returns section 1.
-* Returns the title in case there is a redirect.
-*/
-const getSectionsForPage = async (pageId) => {
-  const url = BASE_URL + "&action=parse&prop=sections&pageid=" + pageId;
-  let data = null;
-
-  try {
-    data = await ajaxGet(url);
-  }
-  catch (error) {
-    return Promise.reject(error);
-  }
-
-  const sectionArray = [];
-  const sections = data.parse.sections;
-
-  for (let s in sections) {
-    let splitNum = sections[s].number.split('.');
-    if (splitNum.length > 1 && splitNum[0] === "1") {
-      sectionArray.push(sections[s].index);
-    }
-  }
-
-  if (sectionArray.length === 0)
-    sectionArray.push("1"); // Use section 1 if there are no "1.x" sections
-
-  return { pageId: pageId, titles: data.parse.title, sections: sectionArray };
-}
-
-/**
- * Gets a random page id from the main namespace.
- */
-const getRandomPage = async () => {
-  const url = BASE_URL + "&action=query&list=random&rnnamespace=0&rnlimit=1";
-  let data = null;
-
-  try {
-    data = await ajaxGet(url);
-  }
-  catch (error) {
-    return Promise.reject(error);
-  }
-
-  const id = data.query.random[0].id;
-  if (!id) return Promise.reject("Invalid random page id.");
-  return id;
+  return { titles: data.parse.title, quotes: validQuotes };
 }
 
 /**
