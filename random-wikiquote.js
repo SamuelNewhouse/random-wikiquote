@@ -15,13 +15,12 @@
 const RandomWikiquote = {};
 
 const BASE_URL = "https://en.wikiquote.org/w/api.php?origin=*&format=json";
-const RETRY_LIMIT = 7;
-const ELEMENTS_TO_KEEP = [ // These elements could contain the quote or parts of it.
+const RETRY_LIMIT = 5;
   'A', 'B', 'I', 'STRONG', 'EM', 'MARK', 'ABBR', 'SMALL',
   'DEL', 'INS', 'SUB', 'SUP', 'PRE', 'CODE', 'DFN', 'SAMP'
 ];
 
-let minLength = 20;
+let minLength = 10;
 let maxLength = 300;
 let numericLimit = 0.1; // Some 'quotes' are just dates and times. Those are filtered out.
 
