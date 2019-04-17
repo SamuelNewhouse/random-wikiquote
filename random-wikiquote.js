@@ -47,9 +47,9 @@ const ajaxGet = (url) => {
     xmlhttp.onreadystatechange = () => {
       const status = xmlhttp.status;
 
-      if (xmlhttp.readyState != 4 || status == 0)
+      if (xmlhttp.readyState !== 4 || status === 0)
         return;
-      else if (status != 200) {
+      else if (status !== 200) {
         reject("Invalid Response: " + status);
         return;
       }
