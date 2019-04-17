@@ -6,7 +6,11 @@
  * an object with the keys "title" and "quote".
  *
  * Title can be many things. It can be a person who said the quote, but it can also be
- * the name of the show, movie, game, or book the quote is from.
+ * the name of the show, movie, game, book, etc. the quote is from.
+ *
+ * https://github.com/SamuelNewhouse/random-wikiquote
+ *
+ * Based on https://github.com/natetyler/wikiquotes-api/
  */
 const RandomWikiquote = {};
 
